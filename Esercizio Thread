@@ -1,20 +1,32 @@
 /*
-   v3 - Produttore e Consumatore.
-   Superamento dell'attesa attiva
-   o busy waiting mediante la 
-   CONDITION_VARIABLE che sospende
-   il processo che non può avanzare. 
+   v5 - Produttore e Consumatore.
+   L'alternanza stretta fra P e C limita
+   di molto la velocità di esecuzione.
+   Usiamo ora un buffer circolare che
+   permette per brevi periodi velocità 
+   diverse fra P e C. Vedi caso tipico
+   del buffer di un HD oppure la stampa.
+   
+   NB. Ora sono anche necessarie due 
+   variabili diverse per segnalare pieno
+   e vuoto così come per le variabili 
+   condition!
 */
 
 #include <stdio.h>
 #include <windows.h>
 #include "altconio.h"
 #include <time.h>
+#define N 10
 
-int buffer;
+int buffer[N];
+int in,out; //indici scrittura e lettura
 int full; //buffer pieno
+int empty; //buffer vuoto
+
 CRITICAL_SECTION mutex; //semaforo binario
-CONDITION_VARIABLE cv;// variabili condizione
+CONDITION_VARIABLE not_full;// variabili condizione
+CONDITION_VARIABLE not_empty;
 
 unsigned long WINAPI Produce_thread(void* arg);
 unsigned long WINAPI Consume_thread(void* arg);
@@ -28,7 +40,10 @@ int main()
 	srand(time(NULL));
 	printf("Produttore e Consumatore WIN\n");
 	printf("We have 2 thread one produce other read from buffer\n");	
-    full=FALSE; //dato non pronto
+    full=FALSE; //buffer pieno NO
+    empty=TRUE; //buffer vuoto SI
+    in=0; //indice di scrittura sul buffer  
+    out=0; //indice di lettura dal buffer
     InitializeCriticalSection(&mutex);
     // creazione dei thread corrispondenti alle funzioni di lettura, elaborazione e scrittura
     P_thread = CreateThread(NULL, 1024, &Produce_thread, NULL, 0, NULL);
@@ -47,16 +62,18 @@ unsigned long WINAPI Produce_thread(void* arg) // Produttore
 EnterCriticalSection(&mutex);
         if (full) 
 		{ printf("<PS>");
-		  SleepConditionVariableCS(&cv, &mutex, INFINITE);
+		  SleepConditionVariableCS(&not_full, &mutex, INFINITE);
 		}
 LeaveCriticalSection(&mutex);
-        delay(RandomNumber(1,3)*10);
-		buffer=r; //scrivo sul buffer
+        //delay(RandomNumber(1,3)*10);
+		buffer[in]=r; //scrivo sul buffer
+		in=(in+1)%N;
 		printf("-P:%d",r);
 EnterCriticalSection(&mutex);
-	    full=TRUE; //segnalo anche che ora il buffer è pieno
+	    if (in==out) full=TRUE; //segnalo anche che ora il buffer è pieno
+        if (empty) empty=FALSE;
 LeaveCriticalSection(&mutex);
-        WakeConditionVariable(&cv);
+        WakeConditionVariable(&not_empty);
 	}
 	ExitThread(0);
 }
@@ -67,19 +84,21 @@ unsigned long WINAPI Consume_thread(void* arg) // Consumatore
 		delay(RandomNumber(1,3)*10);    
       //  while(!full) printf("<V>"); //busy waiting 
 EnterCriticalSection(&mutex);
-        if (!full) 
+        if (empty) 
 		  {
 		  	 printf("<VS>");
-		     SleepConditionVariableCS(&cv, &mutex, INFINITE);
+		     SleepConditionVariableCS(&not_empty, &mutex, INFINITE);
 		  }
 		  
 LeaveCriticalSection(&mutex);
-		r=buffer;//leggo dal buffer
+		r=buffer[out];//leggo dal buffer
+		out=(out+1)%N;
         printf("-C:%d\n",r);
 EnterCriticalSection(&mutex);
-	    full=FALSE;//segnalo che ho letto il dato
+	    if (out==in) empty=TRUE;
+	    if (full) full=FALSE;
 LeaveCriticalSection(&mutex);    
-        WakeConditionVariable(&cv);    
+        WakeConditionVariable(&not_full);    
 	}
 	ExitThread(0);
 }
@@ -157,3 +176,5 @@ thred C()
   }while(1)
 
 */
+
+

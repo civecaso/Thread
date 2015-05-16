@@ -32,6 +32,9 @@ unsigned long WINAPI Produce_thread(void* arg);
 unsigned long WINAPI Consume_thread(void* arg);
 int RandomNumber(int from, int to);
 
+/**
+ * main
+ * */
 int main()
 {   int low, high;
     HANDLE P_thread, C_thread;
@@ -54,6 +57,11 @@ int main()
     printf("\n...END\n");
     return 0;
 }
+
+/**
+ * Thread produttore
+ * @param arg Argomenti della funzione
+ * */
 unsigned long WINAPI Produce_thread(void* arg) // Produttore
 {	int r; int i;
 	for(i=0;i<100;i++){
@@ -78,6 +86,10 @@ LeaveCriticalSection(&mutex);
 	ExitThread(0);
 }
 
+/**
+ * Thread consumatore
+ * @param arg Argomenti della funzione
+ */ 
 unsigned long WINAPI Consume_thread(void* arg) // Consumatore
 {	int r; int i;
 	for(i=0;i<100;i++){
@@ -90,6 +102,9 @@ EnterCriticalSection(&mutex);
 		     SleepConditionVariableCS(&not_empty, &mutex, INFINITE);
 		  }
 		  
+/**
+ * Errori
+ * */
 LeaveCriticalSection(&mutex);
 		r=buffer[out];//leggo dal buffer
 		out=(out+1)%N;
@@ -102,6 +117,9 @@ LeaveCriticalSection(&mutex);
 	}
 	ExitThread(0);
 }
+/**
+ * Funzione che genera un numero random
+ * */
 int RandomNumber(int from, int to)
 {   int r;
 
@@ -109,72 +127,5 @@ int RandomNumber(int from, int to)
 	
 	return r;
 }
-
-/*N=100000;
-thread P()
-
-thred C()
-
-main()
-{
-   empty=TRUE;
-   full=FALSE;
-   count=0;
-   esegui il thread P
-   esegui il thread C
-   aspetta la fine di P
-   aspetta la fine di C
-   return 0;
-}
-
-thread P()
- total=1000;
- do
-{ 
-
-  if (full) sleep (not_full);
-   1. full falsa
-     2. full vera ho dormito
-            e poi qualcuno mi
-            ha risvegliato.
-  
-  r=random;
-  total--
-  delay(variabile fra 0.1 e 5 sec)
-  b[i];
-  i++;
-  count++;
-  if !(count<N) full=TRUE;
-  if (empty==TRUE) 
-     empty=FALSE;
-     wake(not_empty)
-
-  if total==0 continua=FALSE
- }while(continua) 
-  
- if(empty==TRUE)
-    wake(not_empty)
-  exit
- 
-
-
-thred C()
-
- do{
-   if(empty) sleep(not_empty)
-   stampa b[j]
-   delay(variabile fra 0.1 e 5 sec)
-   j++
-   count--
-   if (count==0) 
-      empty=TRUE
-      if continua==FALSE
-         consumatore fuori!
-   if (full==TRUE) 
-       full=FALSE   
-       wake(not_full)
-  }while(1)
-
-*/
 
 
